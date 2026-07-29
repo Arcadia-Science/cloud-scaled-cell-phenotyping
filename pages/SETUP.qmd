@@ -24,23 +24,18 @@ git clone https://github.com/{{< var pub.org >}}/{{< var pub.repo >}}.git
 The publication is rendered with [Quarto](https://quarto.org/). If you don't have it installed (check with `quarto --version`), you can install it [here](https://quarto.org/docs/get-started/).
 :::
 
-This repository uses conda to manage the computational and build environment. If you don't have it installed (check with `conda --version`), you can find operating system-specific instructions for installing miniconda [here](https://docs.conda.io/projects/miniconda/en/latest/). After installing, run the following commands to create and activate the environment.
+This repository uses [uv](https://docs.astral.sh/uv/) to manage the computational and build environment. If you don't have it installed (check with `uv --version`), you can find operating system-specific instructions for installing it [here](https://docs.astral.sh/uv/getting-started/installation/). After installing, run the following command to create the environment and install all dependencies (including the repository's internal packages, in editable mode):
 
 ```bash
-conda env create -n {{< var pub.repo >}} --file env.yml
-conda activate {{< var pub.repo >}}
+uv sync
 ```
 
-Now, install any internal packages in the repository:
-
-```bash
-pip install -e .
-```
+This creates a `.venv/` and installs everything pinned in `uv.lock`, using Python 3.12 as specified in `.python-version`.
 
 And finally, if you plan to submit a pull request, install the [pre-commit](https://pre-commit.com/) hooks:
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 # What's next?
@@ -55,7 +50,7 @@ The best way to ensure you've correctly set up your code and compute environment
 make execute
 ```
 
-(Make sure you're in the conda environment you created above)
+(The `make` targets run through `uv run`, so they automatically use the environment created above.)
 
 This will execute and render the notebook `index.ipynb`, then build the publication site. To preview the site, use
 

@@ -4,27 +4,24 @@ This document explains how to set up the development environment for working wit
 
 ## Setup the code environment
 
-This repository uses conda to manage the computational and build environment. If you don't have it installed (check with `conda --version`), you can find operating system-specific instructions for installing miniconda [here](https://docs.anaconda.com/miniconda/).
+This repository uses [uv](https://docs.astral.sh/uv/) to manage the computational and build environment. If you don't have it installed (check with `uv --version`), you can find operating system-specific instructions for installing it [here](https://docs.astral.sh/uv/getting-started/installation/).
 
-When you're ready, run the following commands to create and activate the environment. Replace `[REPO-NAME]` with your repository name.
+When you're ready, run the following command to create the virtual environment and install all dependencies (including the local `src/` package, in editable mode):
 
 ```bash
-conda env create -n [REPO-NAME] --file env.yml
-conda activate [REPO-NAME]
+uv sync
 ```
 
-(As you introduce dependencies to your publication, or if you already have your full set of dependencies, add them to `env.yml` with the version pinned.)
+This creates a `.venv/` in the project directory and installs everything pinned in `uv.lock`. uv automatically uses Python 3.12 as specified in `.python-version`.
 
-Now, install any internal packages in the repository:
+(As you introduce dependencies to your publication, add them with `uv add <package>`. Runtime dependencies go in `[project.dependencies]` and development-only tooling in the `dev` group of `pyproject.toml`.)
 
-```bash
-pip install -e .
-```
+Prefix commands with `uv run` to run them inside the environment (for example, `uv run quarto preview`), or activate the environment directly with `source .venv/bin/activate`.
 
-And finally, install the [pre-commit](https://pre-commit.com/) hooks. This is optional but recommended:
+Finally, install the [pre-commit](https://pre-commit.com/) hooks. This is optional but recommended:
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 Test your installation with `make preview`. Your pub will open up in your browser.
