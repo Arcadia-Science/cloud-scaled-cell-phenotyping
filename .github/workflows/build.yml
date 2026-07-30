@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PUBLISH_BRANCH: publish
+      BUILD_BRANCH: ""
     steps:
       - uses: actions/checkout@v4
         with:
