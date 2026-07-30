@@ -4,14 +4,14 @@ This guide is for people **developing the notebook-pub-template itself** — add
 
 ## Environment setup
 
-You need [Quarto](https://quarto.org/docs/get-started/) installed separately — it's not included in `env.yml`.
+You need [Quarto](https://quarto.org/docs/get-started/) installed separately — it's not managed by uv.
 
 ```bash
-conda env create -n notebook-pub-template --file env.yml
-conda activate notebook-pub-template
-pip install -e .
-pre-commit install
+uv sync
+uv run pre-commit install
 ```
+
+`uv sync` creates the `.venv/`, installs all dependencies from `uv.lock`, and installs the local package in editable mode (Python 3.12 is pinned via `.python-version`).
 
 Verify with `make preview` — the site should open in your browser.
 

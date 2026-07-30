@@ -9,7 +9,7 @@ If you're **using this template** to create a publication:
   - `_variables.yml` - Publication metadata (title, author, etc.)
   - `authors.yml` - Author information and roles
   - `src/` - Custom Python code for your publication
-  - `env.yml` - Dependencies for your publication
+  - `pyproject.toml` - Dependencies for your publication
 
 - **Leave these files alone**:
   - `_extensions/` - Quarto extensions (including the theme)
@@ -26,12 +26,13 @@ notebook-pub-template/
 ├── _variables.yml     # Publication metadata
 ├── authors.yml        # Author information
 ├── src/               # Custom Python code
-├── env.yml            # Conda environment definition
+├── pyproject.toml     # Python dependencies and configuration
+├── uv.lock            # Pinned dependency lockfile (don't edit by hand)
+├── .python-version    # Pinned Python version (3.12)
 ├── _quarto.yml        # Quarto configuration (rarely edit)
 ├── _freeze/           # Generated output (don't edit)
 ├── _extensions/       # Quarto extensions (don't edit)
-├── _site/             # Generated website (don't edit)
-└── pyproject.toml     # Python configuration (rarely edit)
+└── _site/             # Generated website (don't edit)
 ```
 
 ### Content Files
@@ -46,7 +47,7 @@ notebook-pub-template/
 
 - **`authors.yml`**: Contains author information and contributor roles. The publishing team will help finalize this file near the end of the publication cycle.
 
-- **`env.yml`**: Defines the Conda environment for the publication.
+- **`pyproject.toml`**: Defines the publication's Python dependencies (runtime deps in `[project.dependencies]`, development tooling in the `dev` dependency group) and project configuration. Managed with [uv](https://docs.astral.sh/uv/); the resolved versions are pinned in `uv.lock`.
 
 ### Extensions
 

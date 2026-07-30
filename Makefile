@@ -1,40 +1,40 @@
 .PHONY: lint
 lint:
-	ruff check --exit-zero .
-	ruff format --check .
+	uv run ruff check --exit-zero .
+	uv run ruff format --check .
 
 .PHONY: format
 format:
-	ruff check --fix .
-	ruff format .
+	uv run ruff check --fix .
+	uv run ruff format .
 
 .PHONY: pre-commit
 pre-commit:
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 
 .PHONY: test
 test:
-	pytest -v .
+	uv run pytest -v .
 
 .PHONY: execute
 execute:
 	# Project-wide render without executing code cells.
 	# Instead, rely on pre-computed results present in `_freeze/`.
-	quarto render
+	uv run quarto render
 
 	# Now, render `index.ipynb` with code execution.
 	# This will populate `_freeze/index/` with pre-computed results.
-	quarto render index.ipynb --execute
+	uv run quarto render index.ipynb --execute
 
 .PHONY: preview
 preview:
-	quarto preview
+	uv run quarto preview
 
 .PHONY: execute-demo
 execute-demo:
 	# This command is only necessary when changes are made to the demo notebook
 	# for development of the notebook pub template.
-	quarto render examples/demo.ipynb --execute
+	uv run quarto render examples/demo.ipynb --execute
 
 .PHONY: update-theme
 update-theme:
