@@ -168,7 +168,7 @@ wheels = [
 
 [[package]]
 name = "arcadia-microscopy-tools"
-version = "0.4.1"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arcadia-pycolor" },
@@ -181,9 +181,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "scikit-image" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/ce/41bdcc5b43e5dbe6cd9ab83e1ae43fc471e70b1e0291b863bd988f1cc32d/arcadia_microscopy_tools-0.4.1.tar.gz", hash = "sha256:dc5d3fb9150492b6b11a069dbe04a438f41a3e3865f4c9c5b2a33db31fdbad6b", size = 3166930, upload-time = "2026-06-09T17:44:17.935Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/da/acc880ccafb63878f2fa23f06eb38d1a93209175a8ce1f3f7bd62a79f465/arcadia_microscopy_tools-0.5.0.tar.gz", hash = "sha256:c7f1f59ccd72fd01bba93acd5cff6b35591ad58ccada23104c6b5e9e8fe5f7b7", size = 3171977, upload-time = "2026-07-31T23:47:00.964Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/e5/befbd426988321fb8f340f08dfd4fe52f2e5e74df966a918e8206830ab52/arcadia_microscopy_tools-0.4.1-py3-none-any.whl", hash = "sha256:3d55ce71c3a0e34f8c3f201974d47d1fbab3ee3db2f081b7f28b6a373496a146", size = 1866723, upload-time = "2026-06-09T17:44:19.454Z" },
+    { url = "https://files.pythonhosted.org/packages/49/54/1d2579bd2b5aeaf7e771586ff73324a16befa6c068d59955188dd6067116/arcadia_microscopy_tools-0.5.0-py3-none-any.whl", hash = "sha256:18b333e70179871eeaebea1edcc5972eb129d99caea23cc98b839c153f7c195e", size = 1872055, upload-time = "2026-07-31T23:46:59.129Z" },
 ]
 
 [[package]]
@@ -1925,7 +1925,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arcadia-microscopy-tools" },
+    { name = "arcadia-microscopy-tools", specifier = ">=0.5.0" },
     { name = "arcadia-pycolor", specifier = ">=0.8.0" },
     { name = "matplotlib", specifier = ">=3.11.1" },
     { name = "modal", specifier = ">=1.5.3" },
