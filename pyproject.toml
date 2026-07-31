@@ -6,20 +6,22 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 dependencies = [
-    "arcadia-pycolor==0.6.5",
-    "matplotlib==3.9.2",
-    "pandas==2.2.3",
-    "numpy",
-    "plotly",
+    "arcadia-pycolor",
+    "matplotlib>=3.11.1",
+    "pandas>=3.0.5",
+    "numpy>=2.5.1",
+    "plotly>=6.9.0",
+    "arcadia-microscopy-tools",
+    "modal>=1.5.3",
 ]
 
 [dependency-groups]
 dev = [
-    "pre-commit==4.1.0",
-    "ruff==0.9.6",
-    "jupyterlab==4.3.5",
-    "pyyaml==6.0.2",
-    "jupyterlab-quarto==0.3.5",
+    "pre-commit>=4.1.0",
+    "ruff>=0.9.6",
+    "jupyterlab>=4.3.5",
+    "pyyaml>=6.0.2",
+    "jupyterlab-quarto>=0.3.5",
     "ty>=0.0.65",
 ]
 
@@ -84,6 +86,9 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.uv.sources]
+arcadia-pycolor = { git = "https://github.com/Arcadia-Science/arcadia-pycolor.git", rev = "main" }
 
 [tool.ruff.lint.isort]
 order-by-type = true

@@ -178,3 +178,6 @@ cython_debug/
 /*_files/
 
 **/*.quarto_ipynb
+
+# Sandbox
+scratch/
