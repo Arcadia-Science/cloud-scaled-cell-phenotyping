@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 dependencies = [
-    "arcadia-pycolor",
+    "arcadia-pycolor>=0.8.0",
     "matplotlib>=3.11.1",
     "pandas>=3.0.5",
     "numpy>=2.5.1",
@@ -86,9 +86,6 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
-
-[tool.uv.sources]
-arcadia-pycolor = { git = "https://github.com/Arcadia-Science/arcadia-pycolor.git", rev = "main" }
 
 [tool.ruff.lint.isort]
 order-by-type = true
