@@ -1,12 +1,14 @@
 """Notebook/CLI entry point for the segmentation Modal app.
 
-``run_segmentation`` is the single call the pub notebook uses: it launches the
-Modal app ephemerally, lists ND2s under an S3 prefix, fans the segmentation worker
-out across GPU containers, saves the returned overlay previews into a gitignored
-local folder, and returns per-image summaries plus a combined measurements table.
+``run_segmentation`` is the single call the pub notebook uses: given a dataset id,
+it launches the Modal app ephemerally, lists that dataset's ND2s under its ``raw/``
+prefix, fans the segmentation worker out across GPU containers, saves the returned
+overlay previews into a gitignored local folder, and returns per-image summaries
+plus a combined measurements table.
 
-Full artifacts (masks, overlays, measurement CSVs) are written back to S3 by the
-workers; the small previews returned here are only for local display.
+Full artifacts (masks, overlays, measurement CSVs) are written back to the
+dataset's ``derived/`` prefix by the workers; the small previews returned here are
+only for local display.
 """
 
 from __future__ import annotations
@@ -18,7 +20,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from analysis.app import app, list_images, segment_image
-from analysis.infra import DEFAULT_GPU_MAX_CONTAINERS, DEFAULT_GPU_TYPE, DEFAULT_OUTPUT_PREFIX
+from analysis.bucket_io import derived_prefix, raw_prefix
+from analysis.infra import DEFAULT_GPU_MAX_CONTAINERS, DEFAULT_GPU_TYPE
 from analysis.segment import SegmentConfig
 
 if TYPE_CHECKING:
@@ -34,7 +37,7 @@ class SegmentationRun:
     results: list[dict[str, Any]]  # per-image summaries (with local overlay path)
     measurements: pd.DataFrame  # combined per-cell measurements across images
     results_dir: Path  # local folder holding the overlay previews
-    output_prefix: str  # S3 prefix where full artifacts were written
+    output_prefix: str  # dataset's derived/ S3 prefix where full artifacts were written
     failures: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -45,21 +48,22 @@ def _default_results_dir() -> Path:
 
 
 def run_segmentation(
-    input_prefix: str,
+    dataset_id: str,
     *,
-    output_prefix: str | None = None,
     limit: int | None = 3,
     gpu: str | None = DEFAULT_GPU_TYPE,
     max_containers: int | None = DEFAULT_GPU_MAX_CONTAINERS,
     results_dir: str | Path | None = None,
     **config_kwargs: Any,
 ) -> SegmentationRun:
-    """Segment ND2s under ``input_prefix`` on Modal and collect results locally.
+    """Segment a dataset's ND2s on Modal and collect results locally.
+
+    Reads inputs from ``datasets/<dataset_id>/raw`` and writes derived artifacts
+    to ``datasets/<dataset_id>/derived`` (grouped into ``masks/``, ``overlays/``,
+    and ``measurements/``).
 
     Args:
-        input_prefix: Bucket-relative prefix containing the input ``.nd2`` files.
-        output_prefix: Bucket-relative prefix for derived artifacts. Defaults to
-            ``derived/segmentation/<input_prefix>``.
+        dataset_id: Dataset identifier under the ``datasets/`` namespace.
         limit: Max number of files to process (``None`` for all). Handy for demos.
         gpu: Modal GPU type for the workers (e.g. ``"L4"``). ``None`` keeps the
             function's default.
@@ -89,8 +93,7 @@ def run_segmentation(
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(
                 _run_segmentation,
-                input_prefix,
-                output_prefix=output_prefix,
+                dataset_id,
                 limit=limit,
                 gpu=gpu,
                 max_containers=max_containers,
@@ -100,8 +103,7 @@ def run_segmentation(
             return future.result()
 
     return _run_segmentation(
-        input_prefix,
-        output_prefix=output_prefix,
+        dataset_id,
         limit=limit,
         gpu=gpu,
         max_containers=max_containers,
@@ -111,9 +113,8 @@ def run_segmentation(
 
 
 def _run_segmentation(
-    input_prefix: str,
+    dataset_id: str,
     *,
-    output_prefix: str | None = None,
     limit: int | None = 3,
     gpu: str | None = DEFAULT_GPU_TYPE,
     max_containers: int | None = DEFAULT_GPU_MAX_CONTAINERS,
@@ -123,7 +124,8 @@ def _run_segmentation(
     """Synchronous core of :func:`run_segmentation` (no running event loop)."""
     import pandas as pd
 
-    resolved_output_prefix = output_prefix or f"{DEFAULT_OUTPUT_PREFIX}/{input_prefix.strip('/')}"
+    input_prefix = raw_prefix(dataset_id)
+    resolved_output_prefix = derived_prefix(dataset_id)
     config = SegmentConfig(**config_kwargs)
 
     out_dir = Path(results_dir) if results_dir is not None else _default_results_dir()
@@ -133,7 +135,7 @@ def _run_segmentation(
     failures: list[dict[str, Any]] = []
     frames: list[pd.DataFrame] = []
 
-    logger.warning("running segmentation")
+    logger.info("running segmentation")
 
     with app.run():
         rel_paths = list_images.remote(input_prefix)
@@ -142,7 +144,7 @@ def _run_segmentation(
         if not rel_paths:
             raise FileNotFoundError(f"No .nd2 files found under prefix '{input_prefix}'.")
 
-        logger.warning("segmenting %d image(s) from %s", len(rel_paths), input_prefix)
+        logger.info("segmenting %d image(s) from %s", len(rel_paths), input_prefix)
 
         worker = segment_image
         options: dict[str, Any] = {}

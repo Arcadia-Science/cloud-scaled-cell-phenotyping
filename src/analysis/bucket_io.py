@@ -12,6 +12,27 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+# Top-level namespace holding one self-contained directory per dataset. Each
+# dataset keeps its immutable ND2 inputs under ``raw/`` and its regenerable
+# artifacts under ``derived/`` (grouped by artifact type), so a whole dataset can
+# be listed, archived, or handed off as a single unit.
+DATASETS_ROOT = "datasets"
+
+# Artifact-type subdirectories under a dataset's ``derived/`` prefix.
+MASKS_SUBDIR = "masks"
+OVERLAYS_SUBDIR = "overlays"
+MEASUREMENTS_SUBDIR = "measurements"
+
+
+def raw_prefix(dataset_id: str) -> str:
+    """Bucket-relative prefix holding a dataset's raw ``.nd2`` inputs."""
+    return f"{DATASETS_ROOT}/{dataset_id.strip('/')}/raw"
+
+
+def derived_prefix(dataset_id: str) -> str:
+    """Bucket-relative prefix holding a dataset's derived artifacts."""
+    return f"{DATASETS_ROOT}/{dataset_id.strip('/')}/derived"
+
 
 def list_files(root: Path | str, prefix: str, suffix: str = ".nd2") -> list[str]:
     """Return root-relative paths of every ``*{suffix}`` file under ``prefix``."""

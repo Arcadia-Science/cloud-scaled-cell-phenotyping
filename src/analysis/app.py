@@ -53,6 +53,7 @@ def segment_image(rel_path: str, output_prefix: str, config: dict) -> dict:
     from PIL import Image
 
     from analysis import bucket_io
+    from analysis.bucket_io import MASKS_SUBDIR, MEASUREMENTS_SUBDIR, OVERLAYS_SUBDIR
     from analysis.segment import SegmentConfig, segment_nd2
 
     cfg = SegmentConfig(**config)
@@ -69,20 +70,20 @@ def segment_image(rel_path: str, output_prefix: str, config: dict) -> dict:
 
         result = segment_nd2(local_nd2, config=cfg)
 
-        # --- Write full artifacts back to the bucket ---
+        # --- Write full artifacts back to the bucket, grouped by artifact type ---
         local_tif = tmp_dir / f"{stem}_mask.tif"
         tifffile.imwrite(local_tif, result.mask, metadata={"axes": "YX"})
-        mask_rel = f"{out_prefix}/{stem}_mask.tif"
+        mask_rel = f"{out_prefix}/{MASKS_SUBDIR}/{stem}_mask.tif"
         mask_dest = bucket_io.push_from_local(local_tif, MOUNT_PATH, mask_rel)
 
         local_jpg = tmp_dir / f"{stem}_overlay.jpg"
         Image.fromarray(result.overlay_rgb).convert("RGB").save(local_jpg, quality=90)
-        overlay_rel = f"{out_prefix}/{stem}_overlay.jpg"
+        overlay_rel = f"{out_prefix}/{OVERLAYS_SUBDIR}/{stem}_overlay.jpg"
         overlay_dest = bucket_io.push_from_local(local_jpg, MOUNT_PATH, overlay_rel)
 
         local_csv = tmp_dir / f"{stem}_measurements.csv"
         result.measurements.to_csv(local_csv, index=False)
-        measurements_rel = f"{out_prefix}/{stem}_measurements.csv"
+        measurements_rel = f"{out_prefix}/{MEASUREMENTS_SUBDIR}/{stem}_measurements.csv"
         measurements_dest = bucket_io.push_from_local(local_csv, MOUNT_PATH, measurements_rel)
 
         # Small preview to return over the wire for notebook display.

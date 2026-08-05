@@ -36,9 +36,6 @@ BUCKET = os.environ.get("CSCP_BUCKET", "cloud-scaled-cell-phenotyping")
 SECRET = modal.Secret.from_name("aws-s3-access-secret")
 MOUNT_PATH = "/data"
 
-# Default S3 prefix (relative to the bucket root) for derived artifacts.
-DEFAULT_OUTPUT_PREFIX = "derived/segmentation"
-
 DEFAULT_GPU_TYPE = "L4"
 FUNCTION_TIMEOUT_S = 60 * 30
 
