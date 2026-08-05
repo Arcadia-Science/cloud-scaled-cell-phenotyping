@@ -15,6 +15,18 @@ dependencies = [
     "modal>=1.5.3",
 ]
 
+[project.optional-dependencies]
+# Heavy compute stack for the Modal segmentation workers. Installed only into the
+# worker container image via `uv_sync(extras=["worker"])`, and imported exclusively
+# inside Modal functions (never at local notebook import time), so the local env
+# stays light. Pinned through uv.lock for reproducible image builds.
+worker = [
+    "arcadia-microscopy-tools[segmentation]>=0.5.0", # [segmentation] brings cellpose + torch
+    "nd2>=0.10.3",                                    # ND2 reading
+    "tifffile",                                       # label-mask TIFF output
+    "pillow",                                         # overlay JPEG output
+]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.1.0",
