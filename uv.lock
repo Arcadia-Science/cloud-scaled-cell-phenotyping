@@ -2141,6 +2141,12 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+demo = [
+    { name = "arcadia-microscopy-tools", extra = ["segmentation"] },
+    { name = "nd2" },
+    { name = "pillow" },
+    { name = "tifffile" },
+]
 worker = [
     { name = "arcadia-microscopy-tools", extra = ["segmentation"] },
     { name = "nd2" },
@@ -2161,18 +2167,22 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "arcadia-microscopy-tools", specifier = ">=0.5.0" },
+    { name = "arcadia-microscopy-tools", extras = ["segmentation"], marker = "extra == 'demo'", specifier = ">=0.5.0" },
     { name = "arcadia-microscopy-tools", extras = ["segmentation"], marker = "extra == 'worker'", specifier = ">=0.5.0" },
     { name = "arcadia-pycolor", specifier = ">=0.8.0" },
     { name = "matplotlib", specifier = ">=3.11.1" },
     { name = "modal", specifier = ">=1.5.3" },
+    { name = "nd2", marker = "extra == 'demo'", specifier = ">=0.10.3" },
     { name = "nd2", marker = "extra == 'worker'", specifier = ">=0.10.3" },
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "pandas", specifier = ">=3.0.5" },
+    { name = "pillow", marker = "extra == 'demo'" },
     { name = "pillow", marker = "extra == 'worker'" },
     { name = "plotly", specifier = ">=6.9.0" },
+    { name = "tifffile", marker = "extra == 'demo'" },
     { name = "tifffile", marker = "extra == 'worker'" },
 ]
-provides-extras = ["worker"]
+provides-extras = ["worker", "demo"]
 
 [package.metadata.requires-dev]
 dev = [

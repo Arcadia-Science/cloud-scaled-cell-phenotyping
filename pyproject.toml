@@ -27,6 +27,18 @@ worker = [
     "pillow",                                         # overlay JPEG output
 ]
 
+# Local (no-cloud) demo stack for external readers. Installs the same segmentation
+# stack as `worker` into the *local* env so the notebook's local fallback path can
+# fetch example ND2s from Zenodo and run Cellpose-SAM on CPU without Modal or S3.
+# Install with `uv sync --extra demo` (or `pip install .[demo]`). Internal readers
+# with Modal + bucket access can skip this and use the scaled path.
+demo = [
+    "arcadia-microscopy-tools[segmentation]>=0.5.0",
+    "nd2>=0.10.3",
+    "tifffile",
+    "pillow",
+]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.1.0",
