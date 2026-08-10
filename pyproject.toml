@@ -56,6 +56,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.ty.analysis]
+# The heavy segmentation stack (torch + cellpose) ships only in the `worker`/`demo`
+# extras and is imported lazily inside functions, so it is not installed in the
+# lint/typecheck environment (or CI). Allow those imports to stay unresolved there
+# rather than failing the type check.
+allowed-unresolved-imports = ["torch.**", "cellpose.**"]
+
 [tool.ruff]
 # The directories to consider when resolving first- vs. third-party imports
 src = ["."]
