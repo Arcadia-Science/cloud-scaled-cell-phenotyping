@@ -15,6 +15,30 @@ dependencies = [
     "modal>=1.5.3",
 ]
 
+[project.optional-dependencies]
+# Heavy compute stack for the Modal segmentation workers. Installed only into the
+# worker container image via `uv_sync(extras=["worker"])`, and imported exclusively
+# inside Modal functions (never at local notebook import time), so the local env
+# stays light. Pinned through uv.lock for reproducible image builds.
+worker = [
+    "arcadia-microscopy-tools[segmentation]>=0.5.0", # [segmentation] brings cellpose + torch
+    "nd2>=0.10.3",                                    # ND2 reading
+    "tifffile",                                       # label-mask TIFF output
+    "pillow",                                         # overlay JPEG output
+]
+
+# Local (no-cloud) demo stack for external readers. Installs the same segmentation
+# stack as `worker` into the *local* env so the notebook's local fallback path can
+# fetch example ND2s from Zenodo and run Cellpose-SAM on CPU without Modal or S3.
+# Install with `uv sync --extra demo` (or `pip install .[demo]`). Internal readers
+# with Modal + bucket access can skip this and use the scaled path.
+demo = [
+    "arcadia-microscopy-tools[segmentation]>=0.5.0",
+    "nd2>=0.10.3",
+    "tifffile",
+    "pillow",
+]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.1.0",
@@ -31,6 +55,13 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ty.analysis]
+# The heavy segmentation stack (torch + cellpose) ships only in the `worker`/`demo`
+# extras and is imported lazily inside functions, so it is not installed in the
+# lint/typecheck environment (or CI). Allow those imports to stay unresolved there
+# rather than failing the type check.
+allowed-unresolved-imports = ["torch.**", "cellpose.**"]
 
 [tool.ruff]
 # The directories to consider when resolving first- vs. third-party imports
