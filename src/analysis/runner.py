@@ -55,6 +55,38 @@ def _default_sample_dir(dataset_id: str) -> Path:
     return project_root / "scratch" / "sample_data" / dataset_id.strip("/")
 
 
+def _segmentation_progress(total: int):
+    """Progress bar for a segmentation batch (notebook widget when available).
+
+    Modal ``map()`` is driven on a worker thread in Jupyter (to avoid
+    ``NestedEventLoops``); ipywidgets bars must be created on the kernel thread,
+    so we fall back to the text bar there. The local path stays on the main
+    thread and gets the notebook widget.
+    """
+    import threading
+
+    from tqdm import tqdm as console_tqdm
+    from tqdm.auto import tqdm as auto_tqdm
+
+    bar = auto_tqdm if threading.current_thread() is threading.main_thread() else console_tqdm
+    return bar(total=total, desc="Segmenting", unit="img", dynamic_ncols=True)
+
+
+def _note_progress(
+    pbar: Any,
+    *,
+    n_cells: int | None = None,
+    error: bool = False,
+    total_cells: int = 0,
+) -> None:
+    """Advance the bar; postfix shows the latest cell count (or a failure)."""
+    if error:
+        pbar.set_postfix_str(f"failed · {total_cells} cells total")
+    else:
+        pbar.set_postfix_str(f"{n_cells} cells · {total_cells} total")
+    pbar.update(1)
+
+
 def run_segmentation(
     dataset_id: str,
     *,
@@ -169,27 +201,33 @@ def _run_segmentation(
             return_exceptions=True,
         )
 
-        for rel_path, result in zip(rel_paths, results, strict=True):
-            if isinstance(result, Exception):
-                logger.error("failed %s: %s", rel_path, result)
-                failures.append({"input": rel_path, "error": str(result)})
-                continue
+        total_cells = 0
+        with _segmentation_progress(len(rel_paths)) as pbar:
+            for rel_path, result in zip(rel_paths, results, strict=True):
+                if isinstance(result, Exception):
+                    logger.error("failed %s: %s", rel_path, result)
+                    failures.append({"input": rel_path, "error": str(result)})
+                    _note_progress(pbar, error=True, total_cells=total_cells)
+                    continue
 
-            overlay_bytes = result.pop("overlay_jpg_bytes", None)
-            records = result.pop("measurements_records", [])
-            stem = Path(rel_path).stem
+                overlay_bytes = result.pop("overlay_jpg_bytes", None)
+                records = result.pop("measurements_records", [])
+                stem = Path(rel_path).stem
+                n_cells = int(result.get("n_cells") or 0)
+                total_cells += n_cells
 
-            if overlay_bytes:
-                local_overlay = out_dir / f"{stem}_overlay.jpg"
-                local_overlay.write_bytes(overlay_bytes)
-                result["local_overlay"] = str(local_overlay)
+                if overlay_bytes:
+                    local_overlay = out_dir / f"{stem}_overlay.jpg"
+                    local_overlay.write_bytes(overlay_bytes)
+                    result["local_overlay"] = str(local_overlay)
 
-            if records:
-                df = pd.DataFrame(records)
-                df.insert(0, "image", stem)
-                frames.append(df)
+                if records:
+                    df = pd.DataFrame(records)
+                    df.insert(0, "image", stem)
+                    frames.append(df)
 
-            summaries.append(result)
+                summaries.append(result)
+                _note_progress(pbar, n_cells=n_cells, total_cells=total_cells)
 
     measurements = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
@@ -292,23 +330,29 @@ def run_segmentation_local(
     failures: list[dict[str, Any]] = []
     frames: list[pd.DataFrame] = []
 
-    for nd2_path in nd2_paths:
-        try:
-            summary, df = _segment_one_local(
-                nd2_path,
-                config=config,
-                derived_dir=derived_dir,
-                previews_dir=out_dir,
-                subdirs=(MASKS_SUBDIR, OVERLAYS_SUBDIR, MEASUREMENTS_SUBDIR),
-            )
-        except Exception as exc:
-            logger.error("failed %s: %s", nd2_path.name, exc)
-            failures.append({"input": str(nd2_path), "error": str(exc)})
-            continue
+    total_cells = 0
+    with _segmentation_progress(len(nd2_paths)) as pbar:
+        for nd2_path in nd2_paths:
+            try:
+                summary, df = _segment_one_local(
+                    nd2_path,
+                    config=config,
+                    derived_dir=derived_dir,
+                    previews_dir=out_dir,
+                    subdirs=(MASKS_SUBDIR, OVERLAYS_SUBDIR, MEASUREMENTS_SUBDIR),
+                )
+            except Exception as exc:
+                logger.error("failed %s: %s", nd2_path.name, exc)
+                failures.append({"input": str(nd2_path), "error": str(exc)})
+                _note_progress(pbar, error=True, total_cells=total_cells)
+                continue
 
-        summaries.append(summary)
-        if df is not None and not df.empty:
-            frames.append(df)
+            n_cells = int(summary.get("n_cells") or 0)
+            total_cells += n_cells
+            _note_progress(pbar, n_cells=n_cells, total_cells=total_cells)
+            summaries.append(summary)
+            if df is not None and not df.empty:
+                frames.append(df)
 
     measurements = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
