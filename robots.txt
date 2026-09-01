@@ -1,1 +1,1 @@
-Sitemap: https://Arcadia-Science.github.io/notebook-pub-template/sitemap.xml
+Sitemap: https://Arcadia-Science.github.io/cloud-scaled-cell-phenotyping/sitemap.xml
