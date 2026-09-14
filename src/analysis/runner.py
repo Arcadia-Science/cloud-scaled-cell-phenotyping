@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,6 +30,24 @@ if TYPE_CHECKING:
     import pandas as pd
 
 logger = logging.getLogger("analysis.runner")
+
+
+def _without_running_loop(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+    """Call ``fn`` on a worker thread when an event loop is already running.
+
+    Modal's synchronous APIs (``Function.map`` / ``Function.remote``) spin up their own
+    event loop on the *calling* thread; in an environment that already runs one on the
+    main thread (e.g. a Jupyter notebook) that raises ``NestedEventLoops`` (surfaced as
+    ``InvalidError``). Dispatching to a dedicated worker thread — which has no loop of
+    its own — sidesteps this. Outside a running loop (plain scripts, tests) ``fn`` runs
+    inline.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return fn(*args, **kwargs)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(fn, *args, **kwargs).result()
 
 
 @dataclass
@@ -117,32 +136,10 @@ def run_segmentation(
         A :class:`SegmentationRun` with per-image summaries, a combined
         measurements DataFrame, and the local previews directory.
     """
-    # Modal's synchronous ``Function.map`` iterator creates its own event loop on
-    # the *calling* thread. In an environment that already runs one on the main
-    # thread (e.g. a Jupyter notebook) that raises ``NestedEventLoops`` (surfaced
-    # as ``InvalidError``). When we detect a running loop, run the whole Modal
-    # interaction on a dedicated worker thread, which has no loop of its own.
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        running_loop = False
-    else:
-        running_loop = True
-
-    if running_loop:
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(
-                _run_segmentation,
-                dataset_id,
-                limit=limit,
-                gpu=gpu,
-                max_containers=max_containers,
-                results_dir=results_dir,
-                **config_kwargs,
-            )
-            return future.result()
-
-    return _run_segmentation(
+    # The Modal interaction (``app.run()`` + ``Function.map``) must run without an
+    # already-running event loop, so hand it to a worker thread inside Jupyter.
+    return _without_running_loop(
+        _run_segmentation,
         dataset_id,
         limit=limit,
         gpu=gpu,

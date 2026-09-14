@@ -34,6 +34,30 @@ def derived_prefix(dataset_id: str) -> str:
     return f"{DATASETS_ROOT}/{dataset_id.strip('/')}/derived"
 
 
+def measurements_prefix(dataset_id: str) -> str:
+    """Bucket-relative prefix holding a dataset's per-image measurement CSVs."""
+    return f"{derived_prefix(dataset_id)}/{MEASUREMENTS_SUBDIR}"
+
+
+def image_stem_from_measurements_name(rel_path: str | Path) -> str:
+    """Recover the source-image stem from a ``<stem>_measurements.csv`` path."""
+    stem = Path(rel_path).stem
+    suffix = f"_{MEASUREMENTS_SUBDIR}"
+    return stem[: -len(suffix)] if stem.endswith(suffix) else stem
+
+
+def read_measurement_csvs(root: Path | str, dataset_id: str) -> list[tuple[str, str]]:
+    """Return ``(image_stem, csv_text)`` for each of a dataset's measurement CSVs.
+
+    Reads the per-image CSVs written under ``derived/<dataset_id>/measurements`` so a
+    caller can pool them into one table without re-running segmentation. Operates on a
+    plain ``root`` (the mount path), so it stays Modal-free and unit-testable.
+    """
+    root = Path(root)
+    rel_paths = list_files(root, measurements_prefix(dataset_id), suffix=".csv")
+    return [(image_stem_from_measurements_name(rel), (root / rel).read_text()) for rel in rel_paths]
+
+
 def list_files(root: Path | str, prefix: str, suffix: str = ".nd2") -> list[str]:
     """Return root-relative paths of every ``*{suffix}`` file under ``prefix``."""
     root = Path(root)
