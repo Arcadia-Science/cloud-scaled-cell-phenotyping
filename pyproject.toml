@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=2.5.1",
     "plotly>=6.9.0",
     "scipy>=1.14",
+    "scikit-learn>=1.6",
     "arcadia-microscopy-tools>=0.5.0",
     "modal>=1.5.3",
     "tqdm>=4.66.0",
