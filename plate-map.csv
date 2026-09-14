@@ -1,0 +1,17 @@
+well,row,column,genus,species,strain,ploidy
+K01,K,1,Saccharomyces,cerevisiae,BY4743,diploid
+K02,K,2,Saccharomyces,cerevisiae,BY4743,diploid
+K03,K,3,Saccharomyces,cerevisiae,BY4743,diploid
+K04,K,4,Saccharomyces,cerevisiae,BY4743,diploid
+K05,K,5,Schizosaccharomyces,pombe,SP286,diploid
+K06,K,6,Schizosaccharomyces,pombe,SP286,diploid
+K07,K,7,Schizosaccharomyces,pombe,SP286,diploid
+K08,K,8,Schizosaccharomyces,pombe,SP286,diploid
+L01,L,1,Saccharomyces,cerevisiae,BY4743,diploid
+L02,L,2,Saccharomyces,cerevisiae,BY4743,diploid
+L03,L,3,Saccharomyces,cerevisiae,BY4743,diploid
+L04,L,4,Saccharomyces,cerevisiae,BY4743,diploid
+L05,L,5,Schizosaccharomyces,pombe,SP286,diploid
+L06,L,6,Schizosaccharomyces,pombe,SP286,diploid
+L07,L,7,Schizosaccharomyces,pombe,SP286,diploid
+L08,L,8,Schizosaccharomyces,pombe,SP286,diploid
