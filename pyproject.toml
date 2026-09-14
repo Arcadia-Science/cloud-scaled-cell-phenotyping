@@ -90,6 +90,9 @@ extend-include = ["*.ipynb"]
     # render by moving them to a cell with `# | output: false`. But for clarity, the import should
     # remain in the place where it was originally defined.
     "F811",
+    # Demo-run objects live in earlier cells and may be commented out when loading
+    # precomputed measurements; ruff cannot see kernel state across that path.
+    "F821",
 ]
 
 [tool.ruff.lint]
