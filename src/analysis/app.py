@@ -43,6 +43,21 @@ def list_images(input_prefix: str, suffix: str = ".nd2") -> list[str]:
     return rel_paths
 
 
+@app.function(image=meta_image, volumes=_volumes, timeout=FUNCTION_TIMEOUT_S)
+def read_measurements(dataset_id: str) -> list[dict]:
+    """Return a dataset's per-image measurement CSVs as ``{"image", "csv_text"}`` dicts.
+
+    Reads the CSVs the segmentation workers wrote to ``derived/<id>/measurements`` so a
+    caller can pool the analysis-ready table without re-segmenting. Runs on the light
+    stdlib image (no pandas); the caller concatenates the CSV text locally.
+    """
+    from analysis.bucket_io import read_measurement_csvs
+
+    items = read_measurement_csvs(MOUNT_PATH, dataset_id)
+    logger.info("read %d measurement CSV(s) for %s", len(items), dataset_id)
+    return [{"image": image, "csv_text": text} for image, text in items]
+
+
 @app.function(image=image, gpu="L4", volumes=_volumes, timeout=FUNCTION_TIMEOUT_S)
 def segment_image(rel_path: str, output_prefix: str, config: dict) -> dict:
     """Segment one ND2; write mask/overlay/measurements to S3, return a small preview."""

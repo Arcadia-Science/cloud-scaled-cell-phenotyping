@@ -68,39 +68,43 @@ def _download(url: str, dest: Path) -> None:
     tmp.replace(dest)
 
 
-def fetch_sample_nd2s(
+def fetch_sample_files(
     dataset_id: str,
     dest_dir: Path | str,
     *,
+    suffix: str = ".nd2",
     limit: int | None = 3,
 ) -> list[Path]:
-    """Download up to ``limit`` example ND2s for ``dataset_id`` from Zenodo.
+    """Download up to ``limit`` files of a given type for ``dataset_id`` from Zenodo.
 
     Files whose names contain ``dataset_id`` are preferred; if none match, every
-    ``.nd2`` in the record is considered. Already-downloaded files of the expected
-    size are reused, so re-running the notebook does not re-download.
+    ``*{suffix}`` file in the record is considered. Already-downloaded files of the
+    expected size are reused, so re-running the notebook does not re-download.
 
     Args:
         dataset_id: Dataset identifier, used to filter the record's files.
-        dest_dir: Local directory to cache the downloaded ND2s in.
+        dest_dir: Local directory to cache the downloaded files in.
+        suffix: File extension to select (e.g. ``".nd2"`` for raw inputs or
+            ``".csv"`` for the per-image measurement tables).
         limit: Max number of files to fetch (``None`` for all).
 
     Returns:
-        Local paths to the downloaded ND2 files, sorted by name.
+        Local paths to the downloaded files, sorted by name.
     """
     record_id = _resolve_record_id()
     dest_dir = Path(dest_dir)
 
     files = _list_record_files(record_id)
-    nd2s = [f for f in files if str(f.get("key", "")).lower().endswith(".nd2")]
-    matched = [f for f in nd2s if dataset_id in str(f.get("key", ""))]
-    selected = sorted(matched or nd2s, key=lambda f: str(f.get("key", "")))
+    suffix_lower = suffix.lower()
+    matching = [f for f in files if str(f.get("key", "")).lower().endswith(suffix_lower)]
+    matched = [f for f in matching if dataset_id in str(f.get("key", ""))]
+    selected = sorted(matched or matching, key=lambda f: str(f.get("key", "")))
     if limit is not None:
         selected = selected[:limit]
 
     if not selected:
         raise SampleDataUnavailableError(
-            f"Zenodo record '{record_id}' has no .nd2 files matching dataset '{dataset_id}'."
+            f"Zenodo record '{record_id}' has no {suffix} files matching dataset '{dataset_id}'."
         )
 
     local_paths: list[Path] = []
@@ -121,6 +125,20 @@ def fetch_sample_nd2s(
 
     if not local_paths:
         raise SampleDataUnavailableError(
-            f"Failed to download any sample ND2s from Zenodo record '{record_id}'."
+            f"Failed to download any {suffix} files from Zenodo record '{record_id}'."
         )
     return sorted(local_paths)
+
+
+def fetch_sample_nd2s(
+    dataset_id: str,
+    dest_dir: Path | str,
+    *,
+    limit: int | None = 3,
+) -> list[Path]:
+    """Download up to ``limit`` example ND2s for ``dataset_id`` from Zenodo.
+
+    Thin wrapper over :func:`fetch_sample_files` for the ``.nd2`` inputs consumed by
+    the local re-segmentation path.
+    """
+    return fetch_sample_files(dataset_id, dest_dir, suffix=".nd2", limit=limit)
