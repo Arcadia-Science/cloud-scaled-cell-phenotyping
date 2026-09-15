@@ -32,6 +32,13 @@ uv sync
 
 This creates a `.venv/` and installs everything pinned in `uv.lock`, using Python 3.12 as specified in `.python-version`.
 
+The notebook picks a segmentation backend automatically:
+
+- **Scaled (Modal + S3):** used when the Modal client is authenticated and the `aws-s3-access-secret` is available. This is the internal path.
+- **Local:** used otherwise. Example ND2s download from Zenodo and Cellpose-SAM runs on CPU. Install that stack with `uv sync --extra demo`.
+
+To force the local path in an environment that also has Modal, set `CSCP_FORCE_LOCAL=1` or pass `backend="local"` to `run_demo`.
+
 And finally, if you plan to submit a pull request, install the [pre-commit](https://pre-commit.com/) hooks:
 
 ```bash
