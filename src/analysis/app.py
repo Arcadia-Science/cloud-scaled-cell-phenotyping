@@ -17,15 +17,22 @@ import modal
 
 from analysis.infra import (
     FUNCTION_TIMEOUT_S,
+    MODEL_CACHE_PATH,
     MOUNT_PATH,
     data_mount,
     image,
     meta_image,
+    model_cache,
 )
 
-# Both inputs and outputs live in the same bucket, mounted read/write.
-_volumes: dict[str | PurePosixPath, modal.Volume | modal.CloudBucketMount] = {
-    MOUNT_PATH: data_mount
+# Meta functions only need the bucket. GPU workers also mount the shared Cellpose
+# weights volume so cold starts reuse ``cpsam_v2`` instead of re-downloading it.
+_meta_volumes: dict[str | PurePosixPath, modal.Volume | modal.CloudBucketMount] = {
+    MOUNT_PATH: data_mount,
+}
+_worker_volumes: dict[str | PurePosixPath, modal.Volume | modal.CloudBucketMount] = {
+    MOUNT_PATH: data_mount,
+    MODEL_CACHE_PATH: model_cache,
 }
 
 logger = logging.getLogger("analysis.segmentation")
@@ -33,7 +40,7 @@ logger = logging.getLogger("analysis.segmentation")
 app = modal.App("cscp-segmentation")
 
 
-@app.function(image=meta_image, volumes=_volumes, timeout=FUNCTION_TIMEOUT_S)
+@app.function(image=meta_image, volumes=_meta_volumes, timeout=FUNCTION_TIMEOUT_S)
 def list_images(input_prefix: str, suffix: str = ".nd2") -> list[str]:
     """Return bucket-relative paths of every ND2 under ``input_prefix``."""
     from analysis.bucket_io import list_files
@@ -43,7 +50,7 @@ def list_images(input_prefix: str, suffix: str = ".nd2") -> list[str]:
     return rel_paths
 
 
-@app.function(image=meta_image, volumes=_volumes, timeout=FUNCTION_TIMEOUT_S)
+@app.function(image=meta_image, volumes=_meta_volumes, timeout=FUNCTION_TIMEOUT_S)
 def read_measurements(dataset_id: str) -> list[dict]:
     """Return a dataset's per-image measurement CSVs as ``{"image", "csv_text"}`` dicts.
 
@@ -58,7 +65,7 @@ def read_measurements(dataset_id: str) -> list[dict]:
     return [{"image": image, "csv_text": text} for image, text in items]
 
 
-@app.function(image=image, gpu="L4", volumes=_volumes, timeout=FUNCTION_TIMEOUT_S)
+@app.function(image=image, gpu="L4", volumes=_worker_volumes, timeout=FUNCTION_TIMEOUT_S)
 def segment_image(rel_path: str, output_prefix: str, config: dict) -> dict:
     """Segment one ND2; write mask/overlay/measurements to S3, return a small preview."""
     import tempfile
@@ -103,6 +110,9 @@ def segment_image(rel_path: str, output_prefix: str, config: dict) -> dict:
 
         # Small preview to return over the wire for notebook display.
         overlay_bytes = local_jpg.read_bytes()
+
+    # Persist any first-time Cellpose download (e.g. cpsam_v2) for later workers.
+    model_cache.commit()
 
     elapsed = time.time() - started
     mask_out = str(mask_dest.relative_to(MOUNT_PATH))
