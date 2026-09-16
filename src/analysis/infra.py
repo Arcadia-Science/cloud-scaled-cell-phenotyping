@@ -6,6 +6,10 @@ same config is reused wherever the app is launched (notebook, CLI, or a deploy).
 Design notes:
   * Input ND2s and derived artifacts live in the *same* bucket, so a single
     read/write ``CloudBucketMount`` is enough (mounted at ``MOUNT_PATH``).
+  * Cellpose weights (~1.1 GB ``cpsam_v2``) live on a shared Modal Volume
+    (``cellpose-model-cache``) mounted at Cellpose's default models dir, so GPU
+    workers reuse downloads across cold starts instead of refetching from
+    Hugging Face each time.
   * The heavy compute image is built from this project's ``pyproject.toml`` +
     ``uv.lock`` via ``uv_sync(extras=["worker"])``, so its dependency versions are
     pinned/reproducible. The ``worker`` extra carries the segmentation stack
@@ -36,6 +40,11 @@ BUCKET = os.environ.get("CSCP_BUCKET", "cloud-scaled-cell-phenotyping")
 SECRET = modal.Secret.from_name("aws-s3-access-secret")
 MOUNT_PATH = "/data"
 
+# Cellpose's default cache is ``~/.cellpose/models``; Modal's debian image runs
+# as root, so that resolves to this path. Shared with the sibling modal-cellpose
+# app under the same volume name.
+MODEL_CACHE_PATH = "/root/.cellpose/models"
+
 DEFAULT_GPU_TYPE = "L4"
 FUNCTION_TIMEOUT_S = 60 * 30
 
@@ -44,6 +53,10 @@ DEFAULT_GPU_MAX_CONTAINERS = 10
 
 # One read/write mount for the shared bucket.
 data_mount = modal.CloudBucketMount(bucket_name=BUCKET, secret=SECRET)
+
+# Persistent Cellpose weights (cpsam_v2, etc.). create_if_missing keeps a fresh
+# Modal workspace self-bootstrapping on first run.
+model_cache = modal.Volume.from_name("cellpose-model-cache", create_if_missing=True)
 
 # Heavy compute image: built from the locked project with the ``worker`` extra
 # (cellpose + torch via arcadia-microscopy-tools[segmentation], plus nd2/tifffile/
