@@ -49,7 +49,7 @@ DEFAULT_GPU_TYPE = "L4"
 FUNCTION_TIMEOUT_S = 60 * 30
 
 # Parallelism ceiling (max concurrent GPU containers per function).
-DEFAULT_GPU_MAX_CONTAINERS = 10
+DEFAULT_GPU_MAX_CONTAINERS = 16
 
 # One read/write mount for the shared bucket.
 data_mount = modal.CloudBucketMount(bucket_name=BUCKET, secret=SECRET)

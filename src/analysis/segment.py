@@ -140,11 +140,13 @@ def outline_overlay(
 ) -> np.ndarray:
     """Render mask outlines over the brightfield image as an RGB ``uint8`` image."""
     from cellpose.utils import masks_to_outlines
+    from scipy.ndimage import binary_dilation
 
     gray = _to_uint8_grayscale(background)
     rgb = np.stack([gray, gray, gray], axis=-1)
 
-    outlines = masks_to_outlines(mask)
+    # Make the outlines thicker than the default 1-pixel boundary.
+    outlines = binary_dilation(masks_to_outlines(mask), structure=np.ones((2, 2)))
     if outlines.any():
         color_u8 = np.array([c * 255.0 for c in color], dtype="float32")
         blended = (1.0 - opacity) * rgb[outlines].astype("float32") + opacity * color_u8
