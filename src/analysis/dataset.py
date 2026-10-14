@@ -12,9 +12,8 @@ dataset, not a subsample. Layout:
     derived/overlays/*_overlay.jpg
 
 The Zenodo record is resolved (in priority order) from the ``CSCP_ZENODO_RECORD_ID``
-environment variable, then the ``ZENODO_RECORD_ID`` constant below. Set one of them
-once the archive is published; until then the helper raises a clear error rather
-than silently failing.
+environment variable, then the ``ZENODO_RECORD_ID`` constant below. The env var
+overrides the constant without a code change.
 """
 
 from __future__ import annotations
@@ -28,10 +27,9 @@ from pathlib import Path
 
 logger = logging.getLogger("analysis.dataset")
 
-# Zenodo record holding the published dataset. Fill this in once the archive
-# is published (or set the CSCP_ZENODO_RECORD_ID env var to override without a code
-# change). Kept as a placeholder so the local path fails loudly instead of guessing.
-ZENODO_RECORD_ID: str | None = None
+# Published dataset: https://doi.org/10.5281/zenodo.23377605
+# Override with CSCP_ZENODO_RECORD_ID if needed.
+ZENODO_RECORD_ID: str | None = "23377605"
 
 _ZENODO_API = "https://zenodo.org/api/records/{record_id}"
 
