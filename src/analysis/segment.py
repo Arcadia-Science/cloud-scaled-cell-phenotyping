@@ -4,8 +4,9 @@ Kept import-light so it can be run in a notebook or unit-tested directly: the he
 dependencies (arcadia_microscopy_tools / cellpose / torch / nd2) are imported lazily
 inside the functions, so importing this module in the notebook env stays cheap.
 
-The pipeline reads a single-channel brightfield ND2, normalizes it, segments cells
-with Cellpose-SAM, drops border-touching cells, and produces:
+The pipeline reads a single-channel brightfield ND2, applies a difference-of-Gaussians
+bandpass, contrast-stretches the result, segments cells with Cellpose-SAM, drops
+border-touching cells, and produces:
   * an integer label mask,
   * a per-cell measurements table (regionprops, converted to microns when the pixel
     size is known), and
@@ -31,14 +32,18 @@ class SegmentConfig:
     expected cell diameter in pixels; ``flow_threshold`` / ``cellprob_threshold`` are
     the usual quality knobs (higher cellprob -> fewer, more confident masks).
     ``percentile_low``/``percentile_high`` set the contrast-stretch window applied
-    before segmentation.
+    after the difference-of-Gaussians bandpass and before segmentation.
+    ``dog_sigma_low``/``dog_sigma_high`` are the Gaussian sigmas (pixels) subtracted
+    to form that bandpass (``None`` skips it).
     """
 
     diameter: float | None = None  # None -> Cellpose-SAM default (30 px)
     flow_threshold: float = 0.4
     cellprob_threshold: float = 0.0
-    percentile_low: float = 1.0
-    percentile_high: float = 99.0
+    percentile_low: float = 0.1
+    percentile_high: float = 99.9
+    dog_sigma_low: float | None = 1.6
+    dog_sigma_high: float | None = 16.0
     use_gpu: bool = True
 
     def to_dict(self) -> dict:
@@ -112,6 +117,26 @@ def _measurements_dataframe(
     return pd.DataFrame(properties)
 
 
+def _difference_of_gaussians(
+    image: np.ndarray, *, sigma_low: float, sigma_high: float
+) -> np.ndarray:
+    """Bandpass via Gaussian(sigma_low) - Gaussian(sigma_high)."""
+    from scipy.ndimage import gaussian_filter
+
+    if sigma_low <= 0 or sigma_high <= 0:
+        raise ValueError(
+            f"DoG sigmas must be positive (got sigma_low={sigma_low}, sigma_high={sigma_high})."
+        )
+    if sigma_high <= sigma_low:
+        raise ValueError(
+            f"DoG sigma_high must be greater than sigma_low "
+            f"(got sigma_low={sigma_low}, sigma_high={sigma_high})."
+        )
+
+    img = image.astype("float32", copy=False)
+    return gaussian_filter(img, sigma_low) - gaussian_filter(img, sigma_high)
+
+
 def _to_uint8_grayscale(
     yx: np.ndarray, *, low_pct: float = 1.0, high_pct: float = 99.0
 ) -> np.ndarray:
@@ -165,8 +190,18 @@ def segment_nd2(local_path: Path | str, *, config: SegmentConfig) -> Segmentatio
     raw2d, channel, pixel_size_um = _load_brightfield_plane(local_path)
     channel_name = getattr(channel, "name", str(channel))
 
+    preprocessed = raw2d.astype("float32")
+    if config.dog_sigma_low is not None or config.dog_sigma_high is not None:
+        if config.dog_sigma_low is None or config.dog_sigma_high is None:
+            raise ValueError("dog_sigma_low and dog_sigma_high must both be set, or both be None.")
+        preprocessed = _difference_of_gaussians(
+            preprocessed,
+            sigma_low=config.dog_sigma_low,
+            sigma_high=config.dog_sigma_high,
+        )
+
     normalized = rescale_by_percentile(
-        raw2d.astype("float32"),
+        preprocessed,
         (config.percentile_low, config.percentile_high),
     )
 

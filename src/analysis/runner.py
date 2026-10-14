@@ -130,7 +130,8 @@ def run_segmentation(
         results_dir: Local folder for overlay previews. Defaults to a gitignored
             ``scratch/segmentation_results`` under the project root.
         **config_kwargs: Forwarded to :class:`~analysis.segment.SegmentConfig`
-            (e.g. ``diameter``, ``flow_threshold``, ``cellprob_threshold``).
+            (e.g. ``diameter``, ``flow_threshold``, ``cellprob_threshold``,
+            ``dog_sigma_low``, ``dog_sigma_high``).
 
     Returns:
         A :class:`SegmentationRun` with per-image summaries, a combined
