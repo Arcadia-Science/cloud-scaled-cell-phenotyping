@@ -69,9 +69,10 @@ def _default_results_dir() -> Path:
 
 
 def _default_sample_dir(dataset_id: str) -> Path:
-    """Gitignored ``scratch/sample_data/<dataset_id>`` for the local demo data."""
-    project_root = Path(__file__).resolve().parents[2]
-    return project_root / "scratch" / "sample_data" / dataset_id.strip("/")
+    """Gitignored ``datasets/<dataset_id>`` for the local demo data."""
+    from analysis.sample_data import default_cache_dir
+
+    return default_cache_dir(dataset_id)
 
 
 def _segmentation_progress(total: int):
@@ -301,7 +302,7 @@ def run_segmentation_local(
         results_dir: Local folder for overlay previews (defaults to the gitignored
             ``scratch/segmentation_results``).
         sample_dir: Local cache dir for downloaded ND2s + derived artifacts
-            (defaults to ``scratch/sample_data/<dataset_id>``).
+            (defaults to ``datasets/<dataset_id>``).
         **config_kwargs: Forwarded to :class:`~analysis.segment.SegmentConfig`.
             ``use_gpu`` defaults to ``False`` for CPU-only reproducibility.
     """
@@ -317,11 +318,10 @@ def run_segmentation_local(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     base_dir = Path(sample_dir) if sample_dir is not None else _default_sample_dir(dataset_id)
-    raw_dir = base_dir / "raw"
     derived_dir = base_dir / "derived"
 
     logger.info("running local segmentation (CPU=%s)", not config.use_gpu)
-    nd2_paths = fetch_sample_nd2s(dataset_id, raw_dir, limit=limit)
+    nd2_paths = fetch_sample_nd2s(dataset_id, base_dir, limit=limit)
     logger.info("segmenting %d image(s) locally", len(nd2_paths))
 
     summaries: list[dict[str, Any]] = []
