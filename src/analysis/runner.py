@@ -68,11 +68,11 @@ def _default_results_dir() -> Path:
     return project_root / "scratch" / "segmentation_results"
 
 
-def _default_sample_dir(dataset_id: str) -> Path:
-    """Gitignored ``datasets/<dataset_id>`` for the local demo data."""
-    from analysis.sample_data import default_cache_dir
+def _default_dataset_dir(dataset_id: str) -> Path:
+    """Gitignored ``datasets/<dataset_id>`` for the local copy of the published dataset."""
+    from analysis.dataset import default_dataset_dir
 
-    return default_cache_dir(dataset_id)
+    return default_dataset_dir(dataset_id)
 
 
 def _segmentation_progress(total: int):
@@ -280,28 +280,38 @@ def modal_backend_available() -> bool:
     return available
 
 
+def resolve_backend(backend: str = "auto") -> str:
+    """Return ``"modal"`` or ``"local"``, resolving ``"auto"`` from the environment."""
+    if backend not in {"auto", "modal", "local"}:
+        raise ValueError(f"backend must be 'auto', 'modal', or 'local' (got {backend!r})")
+    if backend == "auto":
+        return "modal" if modal_backend_available() else "local"
+    return backend
+
+
 def run_segmentation_local(
     dataset_id: str,
     *,
     limit: int | None = 3,
     results_dir: str | Path | None = None,
-    sample_dir: str | Path | None = None,
+    dataset_dir: str | Path | None = None,
     **config_kwargs: Any,
 ) -> SegmentationRun:
-    """Segment example ND2s locally (CPU) after fetching them from public Zenodo.
+    """Segment ND2s locally (CPU) after unpacking the published Zenodo dataset.
 
-    The no-cloud fallback used by external readers: downloads a few example ND2s for
-    ``dataset_id`` from the public Zenodo archive, runs the same Cellpose-SAM
-    pipeline (:func:`analysis.segment.segment_nd2`) on the local machine, writes full
-    artifacts to a local ``derived/`` folder, and returns the same
-    :class:`SegmentationRun` shape the notebook consumes.
+    The no-cloud fallback used by external readers: downloads ``{dataset_id}.zip``
+    from the public Zenodo archive (full plate plus precomputed ``derived/``),
+    runs the same Cellpose-SAM pipeline (:func:`analysis.segment.segment_nd2`) on
+    up to ``limit`` local ND2s, writes artifacts under ``derived/``, and returns
+    the same :class:`SegmentationRun` shape the notebook consumes.
 
     Args:
         dataset_id: Dataset identifier used to select files from the Zenodo record.
-        limit: Max number of files to process (``None`` for all).
+        limit: Max number of files to process (``None`` for all). Does not shrink
+            the Zenodo download.
         results_dir: Local folder for overlay previews (defaults to the gitignored
             ``scratch/segmentation_results``).
-        sample_dir: Local cache dir for downloaded ND2s + derived artifacts
+        dataset_dir: Local cache dir for the unpacked dataset
             (defaults to ``datasets/<dataset_id>``).
         **config_kwargs: Forwarded to :class:`~analysis.segment.SegmentConfig`.
             ``use_gpu`` defaults to ``False`` for CPU-only reproducibility.
@@ -309,7 +319,7 @@ def run_segmentation_local(
     import pandas as pd
 
     from analysis.bucket_io import MASKS_SUBDIR, MEASUREMENTS_SUBDIR, OVERLAYS_SUBDIR
-    from analysis.sample_data import fetch_sample_nd2s
+    from analysis.dataset import list_nd2s
 
     config_kwargs.setdefault("use_gpu", False)
     config = SegmentConfig(**config_kwargs)
@@ -317,11 +327,11 @@ def run_segmentation_local(
     out_dir = Path(results_dir) if results_dir is not None else _default_results_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    base_dir = Path(sample_dir) if sample_dir is not None else _default_sample_dir(dataset_id)
+    base_dir = Path(dataset_dir) if dataset_dir is not None else _default_dataset_dir(dataset_id)
     derived_dir = base_dir / "derived"
 
     logger.info("running local segmentation (CPU=%s)", not config.use_gpu)
-    nd2_paths = fetch_sample_nd2s(dataset_id, base_dir, limit=limit)
+    nd2_paths = list_nd2s(dataset_id, base_dir, limit=limit)
     logger.info("segmenting %d image(s) locally", len(nd2_paths))
 
     summaries: list[dict[str, Any]] = []
@@ -442,7 +452,7 @@ def run_demo(
     This is the single entry point the notebook calls. With ``backend="auto"``
     (default) it runs the scaled Modal + S3 pipeline when that environment is
     available (internal readers) and otherwise falls back to the local CPU path on
-    public Zenodo sample data (external readers). Pass ``backend="modal"`` or
+    the published Zenodo dataset (external readers). Pass ``backend="modal"`` or
     ``backend="local"`` to force a path.
 
     Args:
@@ -451,11 +461,7 @@ def run_demo(
         backend: ``"auto"``, ``"modal"``, or ``"local"``.
         **kwargs: Forwarded to the chosen runner.
     """
-    if backend not in {"auto", "modal", "local"}:
-        raise ValueError(f"backend must be 'auto', 'modal', or 'local' (got {backend!r})")
-
-    if backend == "auto":
-        backend = "modal" if modal_backend_available() else "local"
+    backend = resolve_backend(backend)
 
     if backend == "modal":
         return run_segmentation(dataset_id, limit=limit, **kwargs)

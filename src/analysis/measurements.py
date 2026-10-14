@@ -4,7 +4,7 @@ Segmentation writes one ``<image>_measurements.csv`` per image under a dataset's
 ``derived/<id>/measurements`` prefix. Those CSVs are the analysis-ready product, so a
 reader who only wants the phenotyping table can load them directly instead of paying
 for segmentation again. This is both cheaper and, in the local demo, more complete:
-the CPU fallback only segments a handful of images, whereas the published table
+the CPU fallback only segments a few images, whereas the published table
 covers the whole plate.
 
 Sources:
@@ -99,9 +99,11 @@ def _items_from_modal(dataset_id: str) -> list[dict[str, Any]]:
 def _items_from_zenodo(dataset_id: str) -> list[dict[str, Any]]:
     """Download the dataset's published measurement CSVs from Zenodo and read them."""
     from analysis.bucket_io import image_stem_from_measurements_name
-    from analysis.sample_data import fetch_sample_files
+    from analysis.dataset import list_dataset_files
 
-    csv_paths = fetch_sample_files(dataset_id, suffix=".csv", limit=None)
+    csv_paths = list_dataset_files(
+        dataset_id, suffix=".csv", under="derived/measurements", limit=None
+    )
     return [
         {"image": image_stem_from_measurements_name(path), "csv_text": path.read_text()}
         for path in csv_paths

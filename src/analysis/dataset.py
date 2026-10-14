@@ -1,9 +1,10 @@
-"""Fetch the public sample dataset from a Zenodo archive.
+"""Fetch the published dataset from a Zenodo archive.
 
 Internal readers run the scaled Modal pipeline against the private S3 bucket. Every
-other reader has no bucket access, so the notebook's local fallback pulls
+other reader has no bucket access, so the notebook's local path pulls
 ``{dataset_id}.zip`` from a public Zenodo record over HTTPS (stdlib only, no extra
-deps) and unpacks it under gitignored ``datasets/<id>/``. The zip layout is:
+deps) and unpacks it under gitignored ``datasets/<id>/``. The zip is the full
+dataset, not a subsample. Layout:
 
     raw/*.nd2
     derived/masks/*_mask.tif
@@ -25,9 +26,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-logger = logging.getLogger("analysis.sample_data")
+logger = logging.getLogger("analysis.dataset")
 
-# Zenodo record holding the public example datasets. Fill this in once the archive
+# Zenodo record holding the published dataset. Fill this in once the archive
 # is published (or set the CSCP_ZENODO_RECORD_ID env var to override without a code
 # change). Kept as a placeholder so the local path fails loudly instead of guessing.
 ZENODO_RECORD_ID: str | None = None
@@ -35,11 +36,11 @@ ZENODO_RECORD_ID: str | None = None
 _ZENODO_API = "https://zenodo.org/api/records/{record_id}"
 
 
-class SampleDataUnavailableError(RuntimeError):
-    """Raised when the public sample archive is not configured or reachable."""
+class DatasetUnavailableError(RuntimeError):
+    """Raised when the public dataset archive is not configured or reachable."""
 
 
-def default_cache_dir(dataset_id: str) -> Path:
+def default_dataset_dir(dataset_id: str) -> Path:
     """Gitignored ``datasets/<dataset_id>`` unpack location."""
     project_root = Path(__file__).resolve().parents[2]
     return project_root / "datasets" / dataset_id.strip("/")
@@ -48,10 +49,10 @@ def default_cache_dir(dataset_id: str) -> Path:
 def _resolve_record_id() -> str:
     record_id = os.environ.get("CSCP_ZENODO_RECORD_ID") or ZENODO_RECORD_ID
     if not record_id:
-        raise SampleDataUnavailableError(
-            "No Zenodo record configured for the local demo. Set the "
+        raise DatasetUnavailableError(
+            "No Zenodo record configured for the local path. Set the "
             "CSCP_ZENODO_RECORD_ID environment variable (or the ZENODO_RECORD_ID "
-            "constant in analysis/sample_data.py) to the published record id, or "
+            "constant in analysis/dataset.py) to the published record id, or "
             "run the notebook in an environment with Modal + S3 access to use the "
             "scaled pipeline instead."
         )
@@ -65,7 +66,7 @@ def _list_record_files(record_id: str) -> list[dict]:
         with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 (trusted host)
             payload = json.load(resp)
     except Exception as exc:  # network / HTTP / JSON errors
-        raise SampleDataUnavailableError(
+        raise DatasetUnavailableError(
             f"Could not read Zenodo record '{record_id}' at {url}: {exc}"
         ) from exc
     return payload.get("files", [])
@@ -111,13 +112,15 @@ def _extract_zip(zip_path: Path, dest_dir: Path, dataset_id: str) -> None:
                 shutil.copyfileobj(src, fh)
 
 
-def fetch_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
-    """Download ``{dataset_id}.zip`` from Zenodo and unpack it into ``dest_dir``.
+def ensure_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
+    """Download ``{dataset_id}.zip`` from Zenodo if needed and unpack it into ``dest_dir``.
 
-    Already-downloaded zip bytes and already-extracted members are reused.
+    Already-downloaded zip bytes and already-extracted members are reused. The archive
+    is the full published dataset (raw ND2s plus derived masks, overlays, and
+    measurement tables), not a subsample.
     """
     dataset_id = dataset_id.strip("/")
-    dest_dir = Path(dest_dir) if dest_dir is not None else default_cache_dir(dataset_id)
+    dest_dir = Path(dest_dir) if dest_dir is not None else default_dataset_dir(dataset_id)
     zip_name = f"{dataset_id}.zip"
     record_id = _resolve_record_id()
     files = _list_record_files(record_id)
@@ -126,14 +129,14 @@ def fetch_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
         None,
     )
     if entry is None:
-        raise SampleDataUnavailableError(
+        raise DatasetUnavailableError(
             f"Zenodo record '{record_id}' has no file named '{zip_name}'."
         )
 
     links = entry.get("links") or {}
-    url = links.get("self") or links.get("download")
+    url = links.get("content") or links.get("self") or links.get("download")
     if not url:
-        raise SampleDataUnavailableError(f"Zenodo file '{zip_name}' has no download link.")
+        raise DatasetUnavailableError(f"Zenodo file '{zip_name}' has no download link.")
 
     zip_path = dest_dir / zip_name
     expected_size = entry.get("size")
@@ -145,52 +148,99 @@ def fetch_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
     try:
         _extract_zip(zip_path, dest_dir, dataset_id)
     except zipfile.BadZipFile as exc:
-        raise SampleDataUnavailableError(f"{zip_path} is not a valid zip archive.") from exc
+        raise DatasetUnavailableError(f"{zip_path} is not a valid zip archive.") from exc
     return dest_dir
 
 
-def fetch_sample_files(
+def list_dataset_files(
     dataset_id: str,
     dest_dir: Path | str | None = None,
     *,
     suffix: str = ".nd2",
+    under: str = "raw",
     limit: int | None = 3,
 ) -> list[Path]:
-    """Unpack the dataset zip and return local files matching ``suffix``.
+    """Unpack the dataset zip and return local files matching ``suffix`` under ``under``.
 
     Args:
         dataset_id: Dataset identifier; the record must contain ``{dataset_id}.zip``.
         dest_dir: Unpack directory (defaults to ``datasets/<dataset_id>``).
         suffix: File extension to select (e.g. ``".nd2"`` or ``".csv"``).
-        limit: Max number of files to return (``None`` for all).
+        under: Directory relative to the unpack root to search
+            (``"raw"`` or ``"derived/measurements"``).
+        limit: Max number of files to return (``None`` for all). ``limit`` only
+            slices the returned list; the full zip is still downloaded.
 
     Returns:
         Local paths, sorted by name.
     """
-    root = fetch_dataset(dataset_id, dest_dir)
+    root = ensure_dataset(dataset_id, dest_dir)
     suffix_lower = suffix.lower()
-    zip_name = f"{dataset_id.strip('/')}.zip"
-    paths = sorted(
-        path
-        for path in root.rglob("*")
-        if path.is_file() and path.name != zip_name and path.name.lower().endswith(suffix_lower)
+    search_root = root / under
+    paths = (
+        sorted(
+            path
+            for path in search_root.rglob("*")
+            if path.is_file() and path.name.lower().endswith(suffix_lower)
+        )
+        if search_root.is_dir()
+        else []
     )
     if limit is not None:
         paths = paths[:limit]
     if not paths:
-        raise SampleDataUnavailableError(f"Unpacked '{zip_name}' contains no {suffix} files.")
+        raise DatasetUnavailableError(
+            f"Unpacked '{dataset_id.strip('/')}.zip' contains no {suffix} files under '{under}'."
+        )
     return paths
 
 
-def fetch_sample_nd2s(
+def list_nd2s(
     dataset_id: str,
     dest_dir: Path | str | None = None,
     *,
     limit: int | None = 3,
 ) -> list[Path]:
-    """Download up to ``limit`` example ND2s for ``dataset_id`` from Zenodo.
+    """Return up to ``limit`` ND2s from the published dataset's ``raw/`` directory."""
+    return list_dataset_files(dataset_id, dest_dir, suffix=".nd2", under="raw", limit=limit)
 
-    Thin wrapper over :func:`fetch_sample_files` for the ``.nd2`` inputs consumed by
-    the local re-segmentation path.
+
+def ensure_raw_nd2(
+    dataset_id: str,
+    filename: str,
+    dest_dir: Path | str | None = None,
+) -> Path:
+    """Return a local path to one raw ND2, fetching it if needed.
+
+    Order: already-unpacked file, then a single S3 copy when the Modal backend is
+    available, otherwise the published Zenodo zip (the full dataset). Readers
+    without bucket access never hit S3, even if an ``aws`` CLI is installed.
     """
-    return fetch_sample_files(dataset_id, dest_dir, suffix=".nd2", limit=limit)
+    import subprocess
+
+    dest_dir = Path(dest_dir) if dest_dir is not None else default_dataset_dir(dataset_id)
+    dest = dest_dir / "raw" / filename
+    if dest.exists():
+        return dest
+
+    from analysis.runner import modal_backend_available
+
+    if modal_backend_available():
+        from analysis.bucket_io import raw_prefix
+        from analysis.infra import BUCKET
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        src = f"s3://{BUCKET}/{raw_prefix(dataset_id)}/{filename}"
+        try:
+            subprocess.run(["aws", "s3", "cp", src, str(dest)], check=True, capture_output=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+            logger.info("S3 copy of %s failed (%s); unpacking Zenodo dataset", filename, exc)
+        else:
+            return dest
+
+    ensure_dataset(dataset_id, dest_dir)
+    if not dest.exists():
+        raise FileNotFoundError(
+            f"Dataset '{dataset_id.strip('/')}' has no raw file named '{filename}'."
+        )
+    return dest
