@@ -60,6 +60,8 @@ def _resolve_record_id() -> str:
 def _list_record_files(record_id: str) -> list[dict]:
     """Return the Zenodo record's file entries (``key`` + download ``links``)."""
     url = _ZENODO_API.format(record_id=record_id)
+    logger.info("GET %s", url)
+    print(f"[zenodo] Fetching record {record_id} from {url} ...", flush=True)
     try:
         with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 (trusted host)
             payload = json.load(resp)
@@ -74,6 +76,7 @@ def _download(url: str, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
     logger.info("downloading %s -> %s", url, dest)
+    print(f"[zenodo] Downloading {url} -> {dest} ...", flush=True)
     with urllib.request.urlopen(url, timeout=300) as resp, tmp.open("wb") as fh:  # noqa: S310
         while chunk := resp.read(1 << 20):
             fh.write(chunk)
@@ -140,6 +143,7 @@ def ensure_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
     expected_size = entry.get("size")
     if zip_path.exists() and (expected_size is None or zip_path.stat().st_size == expected_size):
         logger.info("using cached %s", zip_path)
+        print(f"[zenodo] Using cached {zip_path}", flush=True)
     else:
         _download(url, zip_path)
 
