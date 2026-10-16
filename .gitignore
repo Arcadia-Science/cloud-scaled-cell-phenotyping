@@ -181,3 +181,6 @@ cython_debug/
 
 # Sandbox
 scratch/
+
+# Unpacked Zenodo sample datasets (``datasets/<id>/``)
+datasets/

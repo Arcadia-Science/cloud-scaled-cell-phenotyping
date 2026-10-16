@@ -35,7 +35,7 @@ This creates a `.venv/` and installs everything pinned in `uv.lock`, using Pytho
 The notebook picks a segmentation backend automatically:
 
 - **Scaled (Modal + S3):** used when the Modal client is authenticated and the `aws-s3-access-secret` is available. This is the internal path.
-- **Local:** used otherwise. Example ND2s download from Zenodo and Cellpose-SAM runs on CPU. Install that stack with `uv sync --extra demo`.
+- **Local:** used otherwise. The published dataset (raw ND2s and derived artifacts) downloads from Zenodo ([10.5281/zenodo.23377605](https://doi.org/10.5281/zenodo.23377605)) and Cellpose-SAM runs on CPU. Install that stack with `uv sync --extra demo`.
 
 To force the local path in an environment that also has Modal, set `CSCP_FORCE_LOCAL=1` or pass `backend="local"` to `run_demo`.
 
