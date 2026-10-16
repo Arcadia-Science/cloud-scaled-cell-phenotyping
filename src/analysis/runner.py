@@ -13,8 +13,11 @@ only for local display.
 
 from __future__ import annotations
 import asyncio
+import html as html_lib
 import logging
 import os
+import sys
+import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -75,21 +78,132 @@ def _default_dataset_dir(dataset_id: str) -> Path:
     return default_dataset_dir(dataset_id)
 
 
-def _segmentation_progress(total: int):
-    """Progress bar for a segmentation batch (notebook widget when available).
+def _in_notebook() -> bool:
+    """True when called from an ipykernel session (Jupyter or ``quarto execute``)."""
+    try:
+        from IPython import get_ipython
 
-    Modal ``map()`` is driven on a worker thread in Jupyter (to avoid
-    ``NestedEventLoops``); ipywidgets bars must be created on the kernel thread,
-    so we fall back to the text bar there. The local path stays on the main
-    thread and gets the notebook widget.
+        ip = get_ipython()
+    except Exception:
+        return False
+    return ip is not None and getattr(ip, "kernel", None) is not None
+
+
+class _ProgressStream:
+    """File-like tqdm target that does not flood notebook / HTML output.
+
+    Headless execute (``make execute`` / nbclient) is not a TTY, so stock tqdm
+    writes a *new line* on every refresh. Interactive Jupyter applies ``\\r`` in
+    the frontend, which is why the same run looks like one bar there. This stream
+    reports ``isatty()`` and, in a kernel, updates a single ``display_id`` HTML
+    block so the saved cell output is the last bar only.
     """
-    import threading
 
+    encoding = "utf-8"
+
+    def __init__(self, use_display: bool):
+        self._use_display = use_display
+        self._display_id = f"cscp-seg-progress-{id(self)}"
+        self._lock = threading.Lock()
+        self._last = ""
+        self._closed = False
+        if use_display:
+            from IPython.display import HTML, display
+
+            display(HTML("<pre style='margin:0'></pre>"), display_id=self._display_id)
+
+    def isatty(self) -> bool:
+        return True
+
+    def write(self, s: str) -> int:
+        if not s:
+            return 0
+        with self._lock:
+            text = s.replace("\r", "\n").strip("\n")
+            if "\n" in text:
+                text = text.split("\n")[-1]
+            if text:
+                self._last = text
+                self._emit(self._last)
+        return len(s)
+
+    def flush(self) -> None:
+        return None
+
+    def _emit(self, text: str) -> None:
+        if not self._use_display:
+            sys.stderr.write("\r" + text)
+            sys.stderr.flush()
+            return
+        from IPython.display import HTML, update_display
+
+        update_display(
+            HTML(f"<pre style='margin:0'>{html_lib.escape(text)}</pre>"),
+            display_id=self._display_id,
+        )
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._use_display or not self._last:
+            return
+        sys.stderr.write("\n")
+        sys.stderr.flush()
+
+
+class _SegmentationBar:
+    """tqdm wrapper that also closes the custom ``file`` stream."""
+
+    def __init__(self, bar: Any, stream: _ProgressStream):
+        self._bar = bar
+        self._stream = stream
+        self._closed = False
+
+    def reset(self, total: int | None = None) -> None:
+        self._bar.reset(total=total)
+
+    def set_postfix_str(self, s: str) -> None:
+        self._bar.set_postfix_str(s)
+
+    def update(self, n: int = 1) -> None:
+        self._bar.update(n)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self._bar.close()
+        self._stream.close()
+
+    def __enter__(self) -> _SegmentationBar:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+
+def _segmentation_progress(total: int, *, notebook: bool | None = None) -> _SegmentationBar:
+    """Progress bar for a segmentation batch.
+
+    Construct this on the kernel thread. Modal ``map()`` runs on a worker thread
+    in Jupyter (to avoid ``NestedEventLoops``); the bar is passed in and updated
+    from there. ``notebook`` should be captured on the kernel thread — worker
+    threads do not see ``get_ipython()``.
+    """
     from tqdm import tqdm as console_tqdm
-    from tqdm.auto import tqdm as auto_tqdm
 
-    bar = auto_tqdm if threading.current_thread() is threading.main_thread() else console_tqdm
-    return bar(total=total, desc="Segmenting", unit="img", dynamic_ncols=True)
+    use_display = _in_notebook() if notebook is None else notebook
+    stream = _ProgressStream(use_display=use_display)
+    bar = console_tqdm(
+        total=total,
+        desc="Segmenting",
+        unit="img",
+        ncols=88,
+        file=stream,
+        mininterval=0.1,
+    )
+    return _SegmentationBar(bar, stream)
 
 
 def _note_progress(
@@ -140,15 +254,22 @@ def run_segmentation(
     """
     # The Modal interaction (``app.run()`` + ``Function.map``) must run without an
     # already-running event loop, so hand it to a worker thread inside Jupyter.
-    return _without_running_loop(
-        _run_segmentation,
-        dataset_id,
-        limit=limit,
-        gpu=gpu,
-        max_containers=max_containers,
-        results_dir=results_dir,
-        **config_kwargs,
-    )
+    # Create the bar here (kernel thread) so notebook display hooks are registered
+    # before work moves off-thread; image count is filled in after listing.
+    pbar = _segmentation_progress(0, notebook=_in_notebook())
+    try:
+        return _without_running_loop(
+            _run_segmentation,
+            dataset_id,
+            limit=limit,
+            gpu=gpu,
+            max_containers=max_containers,
+            results_dir=results_dir,
+            pbar=pbar,
+            **config_kwargs,
+        )
+    finally:
+        pbar.close()
 
 
 def _run_segmentation(
@@ -158,6 +279,7 @@ def _run_segmentation(
     gpu: str | None = DEFAULT_GPU_TYPE,
     max_containers: int | None = DEFAULT_GPU_MAX_CONTAINERS,
     results_dir: str | Path | None = None,
+    pbar: Any,
     **config_kwargs: Any,
 ) -> SegmentationRun:
     """Synchronous core of :func:`run_segmentation` (no running event loop)."""
@@ -201,32 +323,32 @@ def _run_segmentation(
         )
 
         total_cells = 0
-        with _segmentation_progress(len(rel_paths)) as pbar:
-            for rel_path, result in zip(rel_paths, results, strict=True):
-                if isinstance(result, Exception):
-                    logger.error("failed %s: %s", rel_path, result)
-                    failures.append({"input": rel_path, "error": str(result)})
-                    _note_progress(pbar, error=True, total_cells=total_cells)
-                    continue
+        pbar.reset(total=len(rel_paths))
+        for rel_path, result in zip(rel_paths, results, strict=True):
+            if isinstance(result, Exception):
+                logger.error("failed %s: %s", rel_path, result)
+                failures.append({"input": rel_path, "error": str(result)})
+                _note_progress(pbar, error=True, total_cells=total_cells)
+                continue
 
-                overlay_bytes = result.pop("overlay_jpg_bytes", None)
-                records = result.pop("measurements_records", [])
-                stem = Path(rel_path).stem
-                n_cells = int(result.get("n_cells") or 0)
-                total_cells += n_cells
+            overlay_bytes = result.pop("overlay_jpg_bytes", None)
+            records = result.pop("measurements_records", [])
+            stem = Path(rel_path).stem
+            n_cells = int(result.get("n_cells") or 0)
+            total_cells += n_cells
 
-                if overlay_bytes:
-                    local_overlay = out_dir / f"{stem}_overlay.jpg"
-                    local_overlay.write_bytes(overlay_bytes)
-                    result["local_overlay"] = str(local_overlay)
+            if overlay_bytes:
+                local_overlay = out_dir / f"{stem}_overlay.jpg"
+                local_overlay.write_bytes(overlay_bytes)
+                result["local_overlay"] = str(local_overlay)
 
-                if records:
-                    df = pd.DataFrame(records)
-                    df.insert(0, "image", stem)
-                    frames.append(df)
+            if records:
+                df = pd.DataFrame(records)
+                df.insert(0, "image", stem)
+                frames.append(df)
 
-                summaries.append(result)
-                _note_progress(pbar, n_cells=n_cells, total_cells=total_cells)
+            summaries.append(result)
+            _note_progress(pbar, n_cells=n_cells, total_cells=total_cells)
 
     measurements = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
