@@ -1,33 +1,29 @@
-# Notebook Publication Template
+# Scaling single-cell phenotyping with Cellpose and cloud GPU compute
 
-This repo is a template for Jupyter notebook publications. The template produces a publication rendered and hosted by Quarto, which can be viewed at [this demo URL](https://arcadia-science.github.io/notebook-pub-template/).
+This code repository contains or points to all materials required for creating and hosting the publication entitled, *"Scaling single-cell phenotyping with Cellpose and cloud GPU compute"*.
 
-## Template Documentation
+The publication is hosted at [this URL](https://arcadia-science.github.io/cloud-scaled-cell-phenotyping/).
 
-All the learning resources for this template can be found in `developer-docs/`.
-
-- [Quickstart Guide](developer-docs/QUICKSTART.md) - **The most efficient way to get started** is to follow this guide (the rest can wait)
-- [Environment Setup Guide](developer-docs/ENVIRONMENT_SETUP.md) - How to set up your development environment
-- [Publishing Guide](developer-docs/PUBLISHING_GUIDE.md) - How to publish your notebook publication
-- [Template Architecture](developer-docs/TEMPLATE_ARCHITECTURE.md) - Understanding the template's structure
-
----
-
-**NOTE: When ready to publish, fill in the information below, then delete this line and everything above it.**
-
-# [PUB-TITLE]
-
-This code repository contains or points to all materials required for creating and hosting the publication entitled, *"[PUB-TITLE]"*.
-
-The publication is hosted at [this URL](https://arcadia-science.github.io/[REPO-NAME]/).
+![Overview of the cloud-scaled, single-cell phenotyping pipeline. Raw microscopy images are segmented with Cellpose-SAM across a GPU cluster; per-cell measurements and a plate map yield the single-cell dataset used for morphology analysis.](assets/fig1-workflow.png)
 
 ## Data Description
 
-[DESCRIPTION OF THE DATA]
+A two-species yeast panel of brightfield ND2 images: diploid *S. cerevisiae* BY4743 and *S. pombe* SP286, imaged across 16 wells of a 384-well plate (2×2 fields per well; 64 fields of view). The public archive ([10.5281/zenodo.23377605](https://doi.org/10.5281/zenodo.23377605); 764 MB compressed, 2.3 GB unpacked) contains the raw ND2s and precomputed `derived/` artifacts.
+
+Without Modal + S3 access, the notebook downloads and extracts that archive into `datasets/<id>/` on the first local run. If the automatic Zenodo fetch errors or times out, download `<id>.zip` from the record into the same directory and re-run the cell; that bypasses the automatic download. For this pub, `<id>` is `20260611_141152_330`:
+
+```
+datasets/20260611_141152_330/
+├── raw/                  # brightfield ND2s
+└── derived/
+    ├── masks/            # label TIFFs
+    ├── overlays/         # outline JPEGs
+    └── measurements/     # per-cell CSVs
+```
 
 ## Reproduce
 
-Please see [SETUP.qmd](pages/SETUP.qmd).
+The publication is a Jupyter notebook (`index.ipynb`) rendered with Quarto. The hosted page is that notebook's executed output, so reproducing the pub means executing the notebook. Instructions for doing so, including environment setup, backend choice (Modal + S3 vs local CPU), and the `make execute` / `make preview` commands are available in [SETUP.qmd](pages/SETUP.qmd).
 
 ## Contribute
 
