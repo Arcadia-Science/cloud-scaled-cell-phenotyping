@@ -123,6 +123,23 @@ def ensure_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
     dataset_id = dataset_id.strip("/")
     dest_dir = Path(dest_dir) if dest_dir is not None else default_dataset_dir(dataset_id)
     zip_name = f"{dataset_id}.zip"
+    zip_path = dest_dir / zip_name
+    raw_dir = dest_dir / "raw"
+    if raw_dir.is_dir() and any(
+        path.is_file() and path.suffix.lower() == ".nd2" for path in raw_dir.rglob("*")
+    ):
+        logger.info("using unpacked dataset at %s", dest_dir)
+        print(f"[zenodo] Using unpacked dataset at {dest_dir}", flush=True)
+        return dest_dir
+    if zip_path.exists():
+        logger.info("using cached %s", zip_path)
+        print(f"[zenodo] Using cached {zip_path}", flush=True)
+        try:
+            _extract_zip(zip_path, dest_dir, dataset_id)
+        except zipfile.BadZipFile as exc:
+            raise DatasetUnavailableError(f"{zip_path} is not a valid zip archive.") from exc
+        return dest_dir
+
     record_id = _resolve_record_id()
     files = _list_record_files(record_id)
     entry = next(
@@ -139,13 +156,7 @@ def ensure_dataset(dataset_id: str, dest_dir: Path | str | None = None) -> Path:
     if not url:
         raise DatasetUnavailableError(f"Zenodo file '{zip_name}' has no download link.")
 
-    zip_path = dest_dir / zip_name
-    expected_size = entry.get("size")
-    if zip_path.exists() and (expected_size is None or zip_path.stat().st_size == expected_size):
-        logger.info("using cached %s", zip_path)
-        print(f"[zenodo] Using cached {zip_path}", flush=True)
-    else:
-        _download(url, zip_path)
+    _download(url, zip_path)
 
     try:
         _extract_zip(zip_path, dest_dir, dataset_id)
