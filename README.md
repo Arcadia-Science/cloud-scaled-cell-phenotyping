@@ -1,6 +1,6 @@
 # Scaling single-cell phenotyping with Cellpose and cloud GPU compute
 
-This code repository contains or points to all materials required for creating and hosting the publication entitled, *"Scaling single-cell phenotyping with Cellpose and cloud GPU compute"*.
+This code repository contains or points to all materials required for creating and hosting the publication entitled, *"[Scaling single-cell phenotyping with Cellpose and cloud GPU compute](https://doi.org/10.57844/arcadia-tb5a-ft98)"*.
 
 The publication is hosted at [this URL](https://arcadia-science.github.io/cloud-scaled-cell-phenotyping/).
 

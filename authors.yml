@@ -15,16 +15,23 @@
 # - validation
 # - visualization
 authors:
-  - name: <author name as 'First M. Last'>
-    orcid: 0000-0000-0000-0000
+  - name: Ryan Lane
+    orcid: 0000-0002-5887-2069
     roles:
       - conceptualization
-      - formal analysis
-      - investigation
-      - methodology
-      - software
-  - name: <author name as 'First M. Last'>
-    orcid: 0000-0000-0000-0000
+  - name: Ilya Kolb
+    orcid: 0000-0001-5100-849X
     roles:
-      - data curation
       - validation
+  - name: Audrey Bell
+    orcid: 0009-0008-2270-1613
+    roles:
+      - visualization
+  - name: Román Ramos Báez
+    orcid: 0000-0002-0934-5342
+    roles:
+      - resources
+  - name: James Kraemer
+    orcid: 0009-0009-5871-3808
+    roles:
+      - supervision
