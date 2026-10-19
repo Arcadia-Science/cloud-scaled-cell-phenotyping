@@ -1,39 +1,39 @@
 cff-version: 1.2.0
 message: If you use this software, please cite the associated publication.
-title: This is the notebook pub demo
-doi: 10.57844/arcadia-fake-doi
+title: Scaling single-cell phenotyping with Cellpose and cloud GPU compute
+doi: 10.57844/arcadia-tb5a-ft98
 authors:
-- family-names: Author
-  given-names: Test
+- family-names: Bell
+  given-names: Audrey
   affiliation: Arcadia Science
-  orcid: https://orcid.org/0000-0000-0000-0000
-- family-names: Author
-  given-names: Another Test
+  orcid: https://orcid.org/0009-0008-2270-1613
+- family-names: Kolb
+  given-names: Ilya
   affiliation: Arcadia Science
-  orcid: https://orcid.org/0009-0000-0000-0000
-- family-names: Author
-  given-names: Yet Another Test
+  orcid: https://orcid.org/0000-0001-5100-849X
+- family-names: Kraemer
+  given-names: James
   affiliation: Arcadia Science
-  orcid: https://orcid.org/0000-0000-0000-0000
-- family-names: Author
-  given-names: Final
+  orcid: https://orcid.org/0009-0009-5871-3808
+- family-names: Lane
+  given-names: Ryan
   affiliation: Arcadia Science
-  orcid: https://orcid.org/0000-0000-0000-0000
+  orcid: https://orcid.org/0000-0002-5887-2069
+- family-names: Ramos Báez
+  given-names: Román
+  affiliation: Arcadia Science
+  orcid: https://orcid.org/0000-0002-0934-5342
 preferred-citation:
-  title: This is the notebook pub demo
+  title: Scaling single-cell phenotyping with Cellpose and cloud GPU compute
   type: article
-  doi: 10.57844/arcadia-fake-doi
+  doi: 10.57844/arcadia-tb5a-ft98
   authors:
-  - family-names: Author
-    given-names: Test
+  - family-names: Lane
+    given-names: Ryan
     affiliation: Arcadia Science
-    orcid: https://orcid.org/0000-0000-0000-0000
-  - family-names: Author
-    given-names: Another Test
+    orcid: https://orcid.org/0000-0002-5887-2069
+  - family-names: Kraemer
+    given-names: James
     affiliation: Arcadia Science
-    orcid: https://orcid.org/0000-0000-0000-0000
-  - family-names: Author
-    given-names: Yet Another Test
-    affiliation: Arcadia Science
-    orcid: https://orcid.org/0000-0000-0000-0000
-  year: 2025
+    orcid: https://orcid.org/0009-0009-5871-3808
+  year: 2026
