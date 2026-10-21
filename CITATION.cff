@@ -19,8 +19,8 @@ authors:
   given-names: Ryan
   affiliation: Arcadia Science
   orcid: https://orcid.org/0000-0002-5887-2069
-- family-names: Ramos Báez
-  given-names: Román
+- family-names: "Ramos B\xE1ez"
+  given-names: "Rom\xE1n"
   affiliation: Arcadia Science
   orcid: https://orcid.org/0000-0002-0934-5342
 preferred-citation:
@@ -28,12 +28,12 @@ preferred-citation:
   type: article
   doi: 10.57844/arcadia-tb5a-ft98
   authors:
-  - family-names: Lane
-    given-names: Ryan
-    affiliation: Arcadia Science
-    orcid: https://orcid.org/0000-0002-5887-2069
   - family-names: Kraemer
     given-names: James
     affiliation: Arcadia Science
     orcid: https://orcid.org/0009-0009-5871-3808
+  - family-names: Lane
+    given-names: Ryan
+    affiliation: Arcadia Science
+    orcid: https://orcid.org/0000-0002-5887-2069
   year: 2026
