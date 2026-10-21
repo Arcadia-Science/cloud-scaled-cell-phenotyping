@@ -1,31 +1,27 @@
-# For roles, choose from:
-#
-# - conceptualization
-# - formal analysis
-# - investigation
-# - methodology
-# - software
-# - supervision
-# - writing
-# - critical feedback
-# - data curation
-# - editing
-# - project administration
-# - resources
-# - validation
-# - visualization
 authors:
-  - name: First M. Last
-    orcid: 0000-0000-0000-0000
-    roles:
-      - conceptualization
-      - formal analysis
-      - investigation
-      - methodology
-      - software
-  - name: Contributor Name
-    orcid: 0000-0000-0000-0000
-    roles:
-      - data curation
-      - validation
-  - name: Another Author
+- name: Audrey Bell
+  orcid: 0009-0008-2270-1613
+  roles:
+  - Visualization
+- name: Ilya Kolb
+  orcid: 0000-0001-5100-849X
+  roles:
+  - Validation
+- name: James Kraemer
+  orcid: 0009-0009-5871-3808
+  roles:
+  - Supervision
+- name: Ryan Lane
+  orcid: 0000-0002-5887-2069
+  roles:
+  - Conceptualization
+  - Experimental design
+  - Formal analysis
+  - Investigation
+  - Software
+  - Visualization
+  - Writing
+- name: "Rom\xE1n Ramos B\xE1ez"
+  orcid: 0000-0002-0934-5342
+  roles:
+  - Resources

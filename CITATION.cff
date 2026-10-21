@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: If you use this software, please cite the associated publication.
+title: Scaling single-cell phenotyping with Cellpose and cloud GPU compute
+doi: 10.57844/arcadia-tb5a-ft98
+authors:
+- family-names: Bell
+  given-names: Audrey
+  affiliation: Arcadia Science
+  orcid: https://orcid.org/0009-0008-2270-1613
+- family-names: Kolb
+  given-names: Ilya
+  affiliation: Arcadia Science
+  orcid: https://orcid.org/0000-0001-5100-849X
+- family-names: Kraemer
+  given-names: James
+  affiliation: Arcadia Science
+  orcid: https://orcid.org/0009-0009-5871-3808
+- family-names: Lane
+  given-names: Ryan
+  affiliation: Arcadia Science
+  orcid: https://orcid.org/0000-0002-5887-2069
+- family-names: "Ramos B\xE1ez"
+  given-names: "Rom\xE1n"
+  affiliation: Arcadia Science
+  orcid: https://orcid.org/0000-0002-0934-5342
+preferred-citation:
+  title: Scaling single-cell phenotyping with Cellpose and cloud GPU compute
+  type: article
+  doi: 10.57844/arcadia-tb5a-ft98
+  authors:
+  - family-names: Kraemer
+    given-names: James
+    affiliation: Arcadia Science
+    orcid: https://orcid.org/0009-0009-5871-3808
+  - family-names: Lane
+    given-names: Ryan
+    affiliation: Arcadia Science
+    orcid: https://orcid.org/0000-0002-5887-2069
+  year: 2026
